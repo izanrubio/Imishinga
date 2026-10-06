@@ -3,6 +3,8 @@
 namespace App\Livewire\Boards;
 
 use App\Models\Board;
+use App\Models\BoardList;
+use App\Models\Card;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -13,6 +15,17 @@ class Show extends Component
     public Board $board;
 
     public string $newListName = '';
+
+    /** @var array<int, string> */
+    public array $newCardTitle = [];
+
+    public bool $showCardModal = false;
+
+    public ?Card $editingCard = null;
+
+    public string $cardTitle = '';
+
+    public string $cardDescription = '';
 
     public function mount(Board $board): void
     {
@@ -75,10 +88,135 @@ class Show extends Component
         $this->board->unsetRelation('lists');
     }
 
+    public function addCard(int $listId): void
+    {
+        $this->authorize('update', $this->board);
+
+        $list = $this->ownedList($listId);
+
+        $title = trim($this->newCardTitle[$listId] ?? '');
+
+        if ($title === '') {
+            return;
+        }
+
+        $position = ($list->cards()->max('position') ?? -1) + 1;
+
+        $list->cards()->create([
+            'title' => $title,
+            'position' => $position,
+        ]);
+
+        $this->newCardTitle[$listId] = '';
+        $this->board->unsetRelation('lists');
+    }
+
+    public function editCard(int $cardId): void
+    {
+        $this->authorize('update', $this->board);
+
+        $card = $this->ownedCard($cardId);
+
+        $this->editingCard = $card;
+        $this->cardTitle = $card->title;
+        $this->cardDescription = (string) $card->description;
+        $this->showCardModal = true;
+    }
+
+    public function saveCard(): void
+    {
+        $this->authorize('update', $this->board);
+
+        abort_unless($this->editingCard, 404);
+
+        $data = $this->validate([
+            'cardTitle' => ['required', 'string', 'max:255'],
+            'cardDescription' => ['nullable', 'string', 'max:5000'],
+        ], attributes: ['cardTitle' => 'title', 'cardDescription' => 'description']);
+
+        $this->editingCard->update([
+            'title' => $data['cardTitle'],
+            'description' => $data['cardDescription'],
+        ]);
+
+        $this->closeCardModal();
+        $this->board->unsetRelation('lists');
+    }
+
+    public function deleteCard(int $cardId): void
+    {
+        $this->authorize('update', $this->board);
+
+        $this->ownedCard($cardId)->delete();
+
+        $this->closeCardModal();
+        $this->board->unsetRelation('lists');
+    }
+
+    public function closeCardModal(): void
+    {
+        $this->showCardModal = false;
+        $this->editingCard = null;
+        $this->reset(['cardTitle', 'cardDescription']);
+    }
+
+    /**
+     * Move/reorder a card. $orderedIds is the full, final ordering of card
+     * ids within the destination list (including the moved card).
+     *
+     * @param  array<int, int|string>  $orderedIds
+     */
+    public function reorderCards(int $cardId, int $toListId, array $orderedIds): void
+    {
+        $this->authorize('update', $this->board);
+
+        $card = $this->ownedCard($cardId);
+        $toList = $this->ownedList($toListId);
+        $fromListId = $card->list_id;
+
+        if ($fromListId !== $toList->id) {
+            $card->update(['list_id' => $toList->id]);
+        }
+
+        foreach ($orderedIds as $position => $id) {
+            Card::whereKey($id)->update(['position' => $position]);
+        }
+
+        if ($fromListId !== $toList->id) {
+            $this->board->lists()->whereKey($fromListId)->first()
+                ?->cards()->orderBy('position')->get()
+                ->values()
+                ->each(fn (Card $remaining, int $position) => $remaining->update(['position' => $position]));
+        }
+
+        $this->board->unsetRelation('lists');
+    }
+
+    private function ownedList(int $listId): BoardList
+    {
+        $list = $this->board->lists()->whereKey($listId)->first();
+
+        abort_if(! $list, 404);
+
+        return $list;
+    }
+
+    private function ownedCard(int $cardId): Card
+    {
+        $card = Card::with('list')->find($cardId);
+
+        abort_if(! $card || $card->list->board_id !== $this->board->id, 404);
+
+        return $card;
+    }
+
     public function render()
     {
         return view('livewire.boards.show', [
-            'lists' => $this->board->lists()->orderBy('position')->get(),
+            'lists' => $this->board->lists()
+                ->with(['cards' => fn ($query) => $query->orderBy('position')->orderBy('id')])
+                ->orderBy('position')
+                ->get(),
         ]);
     }
 }
