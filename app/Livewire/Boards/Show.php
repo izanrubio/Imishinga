@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Boards;
 
+use App\Models\Attachment;
 use App\Models\Board;
 use App\Models\BoardList;
 use App\Models\Card;
@@ -78,7 +79,11 @@ class Show extends Component
     {
         $this->authorize('update', $this->board);
 
-        $this->board->lists()->whereKey($listId)->delete();
+        $list = $this->ownedList($listId);
+
+        Attachment::purgeFilesForCardIds($list->cards()->pluck('id'));
+        $list->delete();
+
         $this->board->unsetRelation('lists');
     }
 
@@ -162,7 +167,10 @@ class Show extends Component
     {
         $this->authorize('update', $this->board);
 
-        $this->ownedCard($cardId)->delete();
+        $card = $this->ownedCard($cardId);
+
+        Attachment::purgeFilesForCardIds([$card->id]);
+        $card->delete();
 
         $this->closeCardModal();
         $this->board->unsetRelation('lists');
@@ -214,6 +222,18 @@ class Show extends Component
 
     #[On('checklists-updated')]
     public function refreshChecklists(): void
+    {
+        //
+    }
+
+    #[On('comments-updated')]
+    public function refreshComments(): void
+    {
+        //
+    }
+
+    #[On('attachments-updated')]
+    public function refreshAttachments(): void
     {
         //
     }
@@ -286,6 +306,8 @@ class Show extends Component
                     ->withCount([
                         'checklistItems as checklist_items_count',
                         'checklistItems as checklist_items_done_count' => fn ($q) => $q->where('is_done', true),
+                        'comments as comments_count',
+                        'attachments as attachments_count',
                     ])])
                 ->orderBy('position')
                 ->get(),

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AttachmentController;
 use App\Livewire\Auth\Login;
 use App\Livewire\Boards\Index as BoardsIndex;
 use App\Livewire\Boards\Show as BoardsShow;
@@ -26,4 +27,5 @@ Route::post('/logout', function () {
 Route::middleware('auth')->group(function () {
     Route::get('/boards', BoardsIndex::class)->name('boards.index');
     Route::get('/boards/{board}', BoardsShow::class)->name('boards.show');
+    Route::get('/attachments/{attachment}', [AttachmentController::class, 'show'])->name('attachments.show');
 });

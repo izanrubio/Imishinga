@@ -2,7 +2,9 @@
 
 namespace App\Livewire\Boards;
 
+use App\Models\Attachment;
 use App\Models\Board;
+use App\Models\Card;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -75,6 +77,9 @@ class Index extends Component
     public function deleteBoard(Board $board): void
     {
         $this->authorize('delete', $board);
+
+        $cardIds = Card::whereIn('list_id', $board->lists()->pluck('id'))->pluck('id');
+        Attachment::purgeFilesForCardIds($cardIds);
 
         $board->delete();
     }
