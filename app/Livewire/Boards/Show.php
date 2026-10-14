@@ -212,6 +212,12 @@ class Show extends Component
         //
     }
 
+    #[On('checklists-updated')]
+    public function refreshChecklists(): void
+    {
+        //
+    }
+
     /**
      * Move/reorder a card. $orderedIds is the full, final ordering of card
      * ids within the destination list (including the moved card).
@@ -275,7 +281,12 @@ class Show extends Component
     {
         return view('livewire.boards.show', [
             'lists' => $this->board->lists()
-                ->with(['cards' => fn ($query) => $query->orderBy('position')->orderBy('id')->with('labels')])
+                ->with(['cards' => fn ($query) => $query->orderBy('position')->orderBy('id')
+                    ->with('labels')
+                    ->withCount([
+                        'checklistItems as checklist_items_count',
+                        'checklistItems as checklist_items_done_count' => fn ($q) => $q->where('is_done', true),
+                    ])])
                 ->orderBy('position')
                 ->get(),
             'labels' => $this->board->labels()->orderBy('name')->get(),

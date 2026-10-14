@@ -6,10 +6,13 @@ use App\Livewire\Boards\Show;
 use App\Models\Board;
 use App\Models\BoardList;
 use App\Models\Card;
+use App\Models\Checklist;
+use App\Models\ChecklistItem;
 use App\Models\Label;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -309,6 +312,41 @@ class BoardShowCardsTest extends TestCase
         $this->assertSame('completed', $completedOverdue->dueBadgeTone());
 
         Carbon::setTestNow();
+    }
+
+    public function test_board_view_exposes_checklist_progress_counts_without_n_plus_one(): void
+    {
+        $user = User::factory()->create();
+        $board = Board::factory()->for($user)->create();
+        $list = BoardList::factory()->for($board)->create();
+
+        $cardWithProgress = Card::factory()->for($list, 'list')->create();
+        $checklist = Checklist::factory()->for($cardWithProgress)->create();
+        ChecklistItem::factory()->for($checklist)->create(['is_done' => true]);
+        ChecklistItem::factory()->for($checklist)->create(['is_done' => true]);
+        ChecklistItem::factory()->for($checklist)->create(['is_done' => false]);
+
+        $cardWithoutChecklists = Card::factory()->for($list, 'list')->create();
+
+        DB::enableQueryLog();
+
+        $lists = Livewire::actingAs($user)
+            ->test(Show::class, ['board' => $board])
+            ->viewData('lists');
+
+        $queryCount = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        $cards = $lists->firstWhere('id', $list->id)->cards;
+        $withProgress = $cards->firstWhere('id', $cardWithProgress->id);
+        $withoutChecklists = $cards->firstWhere('id', $cardWithoutChecklists->id);
+
+        $this->assertSame(3, $withProgress->checklist_items_count);
+        $this->assertSame(2, $withProgress->checklist_items_done_count);
+        $this->assertSame(0, $withoutChecklists->checklist_items_count);
+
+        // a handful of fixed queries regardless of card count, not one per card
+        $this->assertLessThan(10, $queryCount);
     }
 
     public function test_card_actions_404_when_card_belongs_to_a_different_board(): void

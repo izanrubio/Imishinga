@@ -92,16 +92,31 @@
                                             <p class="text-gray-500 text-xs mt-1 truncate">{{ $card->description }}</p>
                                         @endif
 
-                                        @if ($card->due_date)
-                                            @php $tone = $card->dueBadgeTone(); @endphp
-                                            <span @class([
-                                                'inline-block text-xs px-1.5 py-0.5 rounded mt-1',
-                                                'bg-red-100 text-red-700' => $tone === 'overdue',
-                                                'bg-amber-100 text-amber-700' => $tone === 'today',
-                                                'bg-green-100 text-green-700' => $tone === 'completed',
-                                                'bg-gray-100 text-gray-600' => $tone === 'upcoming',
-                                            ])>{{ $card->due_date->format('j M') }}</span>
-                                        @endif
+                                        <div class="flex items-center gap-1.5 mt-1">
+                                            @if ($card->due_date)
+                                                @php $tone = $card->dueBadgeTone(); @endphp
+                                                <span @class([
+                                                    'inline-block text-xs px-1.5 py-0.5 rounded',
+                                                    'bg-red-100 text-red-700' => $tone === 'overdue',
+                                                    'bg-amber-100 text-amber-700' => $tone === 'today',
+                                                    'bg-green-100 text-green-700' => $tone === 'completed',
+                                                    'bg-gray-100 text-gray-600' => $tone === 'upcoming',
+                                                ])>{{ $card->due_date->format('j M') }}</span>
+                                            @endif
+
+                                            @if ($card->checklist_items_count > 0)
+                                                <span @class([
+                                                    'inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded',
+                                                    'bg-green-100 text-green-700' => $card->checklist_items_done_count === $card->checklist_items_count,
+                                                    'bg-gray-100 text-gray-600' => $card->checklist_items_done_count !== $card->checklist_items_count,
+                                                ])>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
+                                                        <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+                                                    </svg>
+                                                    {{ $card->checklist_items_done_count }}/{{ $card->checklist_items_count }}
+                                                </span>
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -129,10 +144,10 @@
 
     @if ($showCardModal)
         <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50" x-data x-on:keydown.escape.window="$wire.closeCardModal()">
-            <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6" x-on:click.outside="$wire.closeCardModal()">
+            <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto" x-on:click.outside="$wire.closeCardModal()">
                 <h2 class="text-lg font-semibold mb-4">Edit card</h2>
 
-                <form wire:submit="saveCard" class="space-y-4">
+                <form id="save-card-form" wire:submit="saveCard" class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Title</label>
                         <input wire:model="cardTitle" type="text" autofocus
@@ -183,24 +198,32 @@
                         <label for="card-completed-toggle" class="text-sm text-gray-700">Completed</label>
                     </div>
 
-                    <div class="flex justify-between items-center pt-2">
-                        <button type="button"
-                            x-on:click="if (confirm('Delete this card?')) { $wire.deleteCard({{ $editingCard?->id }}) }"
-                            class="px-3 py-2 text-sm rounded-md text-red-600 hover:bg-red-50">
-                            Delete
-                        </button>
-
-                        <div class="flex gap-2">
-                            <button type="button" wire:click="closeCardModal"
-                                class="px-4 py-2 text-sm rounded-md text-gray-700 hover:bg-gray-100">
-                                Cancel
-                            </button>
-                            <button type="submit" class="px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700">
-                                Save
-                            </button>
-                        </div>
-                    </div>
                 </form>
+
+                @if ($editingCard)
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Checklists</label>
+                        <livewire:boards.checklist-manager :card="$editingCard" :key="'checklist-manager-'.$editingCard->id" />
+                    </div>
+                @endif
+
+                <div class="flex justify-between items-center pt-4">
+                    <button type="button"
+                        x-on:click="if (confirm('Delete this card?')) { $wire.deleteCard({{ $editingCard?->id }}) }"
+                        class="px-3 py-2 text-sm rounded-md text-red-600 hover:bg-red-50">
+                        Delete
+                    </button>
+
+                    <div class="flex gap-2">
+                        <button type="button" wire:click="closeCardModal"
+                            class="px-4 py-2 text-sm rounded-md text-gray-700 hover:bg-gray-100">
+                            Cancel
+                        </button>
+                        <button type="submit" form="save-card-form" class="px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700">
+                            Save
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     @endif

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Card extends Model
 {
@@ -32,6 +33,11 @@ class Card extends Model
     public function checklists(): HasMany
     {
         return $this->hasMany(Checklist::class);
+    }
+
+    public function checklistItems(): HasManyThrough
+    {
+        return $this->hasManyThrough(ChecklistItem::class, Checklist::class);
     }
 
     public function comments(): HasMany
