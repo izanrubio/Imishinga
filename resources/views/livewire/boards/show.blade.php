@@ -1,10 +1,14 @@
 <div style="background-color: {{ $board->background_color ?? '#f3f4f6' }}" class="min-h-[calc(100vh-3.5rem)]">
-    <div class="px-6 pt-6 pb-2">
-        <a href="{{ route('boards.index') }}" class="text-white/80 hover:text-white text-sm">&larr; Boards</a>
-        <h1 class="text-2xl font-semibold text-white mt-1">{{ $board->name }}</h1>
-        @if ($board->description)
-            <p class="text-white/80 text-sm mt-1">{{ $board->description }}</p>
-        @endif
+    <div class="px-6 pt-6 pb-2 flex items-start justify-between gap-4">
+        <div>
+            <a href="{{ route('boards.index') }}" class="text-white/80 hover:text-white text-sm">&larr; Boards</a>
+            <h1 class="text-2xl font-semibold text-white mt-1">{{ $board->name }}</h1>
+            @if ($board->description)
+                <p class="text-white/80 text-sm mt-1">{{ $board->description }}</p>
+            @endif
+        </div>
+
+        <livewire:boards.label-manager :board="$board" :key="'label-manager-'.$board->id" />
     </div>
 
     <div class="flex gap-4 overflow-x-auto items-start px-6 pb-6">
@@ -68,10 +72,38 @@
                             <div wire:key="card-{{ $card->id }}" data-card-id="{{ $card->id }}"
                                 x-on:click="$wire.editCard({{ $card->id }})"
                                 class="bg-white rounded-md shadow-sm px-3 py-2 text-sm cursor-pointer hover:ring-2 hover:ring-blue-300">
-                                <p class="text-gray-800">{{ $card->title }}</p>
-                                @if ($card->description)
-                                    <p class="text-gray-500 text-xs mt-1 truncate">{{ $card->description }}</p>
+                                @if ($card->labels->isNotEmpty())
+                                    <div class="flex flex-wrap gap-1 mb-1.5">
+                                        @foreach ($card->labels as $label)
+                                            <span class="h-2 w-8 rounded-full" style="background-color: {{ $label->color }}" title="{{ $label->name }}"></span>
+                                        @endforeach
+                                    </div>
                                 @endif
+
+                                <div class="flex items-start gap-2">
+                                    <button type="button" x-on:click.stop="$wire.toggleCompleted({{ $card->id }})"
+                                        title="{{ $card->completed_at ? 'Mark not complete' : 'Mark complete' }}"
+                                        class="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full border-2 {{ $card->completed_at ? 'bg-green-500 border-green-500' : 'border-gray-300 hover:border-gray-400' }}">
+                                    </button>
+
+                                    <div class="flex-1 min-w-0">
+                                        <p class="{{ $card->completed_at ? 'text-gray-400 line-through' : 'text-gray-800' }}">{{ $card->title }}</p>
+                                        @if ($card->description)
+                                            <p class="text-gray-500 text-xs mt-1 truncate">{{ $card->description }}</p>
+                                        @endif
+
+                                        @if ($card->due_date)
+                                            @php $tone = $card->dueBadgeTone(); @endphp
+                                            <span @class([
+                                                'inline-block text-xs px-1.5 py-0.5 rounded mt-1',
+                                                'bg-red-100 text-red-700' => $tone === 'overdue',
+                                                'bg-amber-100 text-amber-700' => $tone === 'today',
+                                                'bg-green-100 text-green-700' => $tone === 'completed',
+                                                'bg-gray-100 text-gray-600' => $tone === 'upcoming',
+                                            ])>{{ $card->due_date->format('j M') }}</span>
+                                        @endif
+                                    </div>
+                                </div>
                             </div>
                         @empty
                             <div class="text-sm text-gray-400 italic px-1 py-6 text-center border-2 border-dashed border-gray-200 rounded">
@@ -113,6 +145,42 @@
                         <textarea wire:model="cardDescription" rows="4"
                             class="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
                         @error('cardDescription') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Labels</label>
+                        <div class="flex flex-wrap gap-2">
+                            @forelse ($labels as $label)
+                                @php $assigned = $editingCard?->labels->contains($label->id); @endphp
+                                <button type="button" wire:click="toggleCardLabel({{ $editingCard?->id }}, {{ $label->id }})"
+                                    class="text-xs px-2 py-1 rounded-full border {{ $assigned ? 'text-white border-transparent' : 'text-gray-600 border-gray-300 hover:border-gray-400' }}"
+                                    @style([ 'background-color: '.$label->color => $assigned ])>
+                                    {{ $label->name }}
+                                </button>
+                            @empty
+                                <p class="text-xs text-gray-400">No labels yet — create some from the board's "Labels" button.</p>
+                            @endforelse
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Due date</label>
+                        <div class="flex gap-2 mt-1">
+                            <input wire:model="cardDueDate" type="datetime-local"
+                                class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <button type="button" wire:click="clearDueDate"
+                                class="px-3 py-1 text-sm rounded-md text-gray-600 hover:bg-gray-100">
+                                Clear
+                            </button>
+                        </div>
+                        @error('cardDueDate') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <input id="card-completed-toggle" type="checkbox" wire:click="toggleCompleted({{ $editingCard?->id }})"
+                            @checked($editingCard?->completed_at)
+                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <label for="card-completed-toggle" class="text-sm text-gray-700">Completed</label>
                     </div>
 
                     <div class="flex justify-between items-center pt-2">

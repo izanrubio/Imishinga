@@ -6,8 +6,10 @@ use App\Livewire\Boards\Show;
 use App\Models\Board;
 use App\Models\BoardList;
 use App\Models\Card;
+use App\Models\Label;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -198,6 +200,115 @@ class BoardShowCardsTest extends TestCase
 
         // with a tie on position, the id tiebreaker must keep this deterministic
         $this->assertSame([$cardA->title, $cardB->title], $orderedTitles);
+    }
+
+    public function test_user_can_assign_and_unassign_a_label(): void
+    {
+        $user = User::factory()->create();
+        $board = Board::factory()->for($user)->create();
+        $list = BoardList::factory()->for($board)->create();
+        $card = Card::factory()->for($list, 'list')->create();
+        $label = Label::factory()->for($board)->create();
+
+        $component = Livewire::actingAs($user)->test(Show::class, ['board' => $board]);
+
+        $component->call('toggleCardLabel', $card->id, $label->id);
+        $this->assertDatabaseHas('card_label', ['card_id' => $card->id, 'label_id' => $label->id]);
+
+        $component->call('toggleCardLabel', $card->id, $label->id);
+        $this->assertDatabaseMissing('card_label', ['card_id' => $card->id, 'label_id' => $label->id]);
+    }
+
+    public function test_assigning_a_label_from_a_different_board_404s(): void
+    {
+        $user = User::factory()->create();
+        $board = Board::factory()->for($user)->create();
+        $list = BoardList::factory()->for($board)->create();
+        $card = Card::factory()->for($list, 'list')->create();
+
+        $otherBoard = Board::factory()->create();
+        $otherLabel = Label::factory()->for($otherBoard)->create();
+
+        Livewire::actingAs($user)
+            ->test(Show::class, ['board' => $board])
+            ->call('toggleCardLabel', $card->id, $otherLabel->id)
+            ->assertStatus(404);
+
+        $this->assertDatabaseMissing('card_label', ['card_id' => $card->id, 'label_id' => $otherLabel->id]);
+    }
+
+    public function test_user_can_set_and_clear_a_due_date(): void
+    {
+        $user = User::factory()->create();
+        $board = Board::factory()->for($user)->create();
+        $list = BoardList::factory()->for($board)->create();
+        $card = Card::factory()->for($list, 'list')->create();
+
+        Livewire::actingAs($user)
+            ->test(Show::class, ['board' => $board])
+            ->call('editCard', $card->id)
+            ->set('cardDueDate', '2026-12-25T10:00')
+            ->call('saveCard');
+
+        $this->assertSame('2026-12-25 10:00:00', $card->fresh()->due_date->format('Y-m-d H:i:s'));
+
+        Livewire::actingAs($user)
+            ->test(Show::class, ['board' => $board])
+            ->call('editCard', $card->id)
+            ->assertSet('cardDueDate', '2026-12-25T10:00')
+            ->call('clearDueDate')
+            ->call('saveCard');
+
+        $this->assertNull($card->fresh()->due_date);
+    }
+
+    public function test_user_can_toggle_completed_without_moving_the_card(): void
+    {
+        $user = User::factory()->create();
+        $board = Board::factory()->for($user)->create();
+        $list = BoardList::factory()->for($board)->create();
+        $card = Card::factory()->for($list, 'list')->create(['position' => 3]);
+
+        Livewire::actingAs($user)
+            ->test(Show::class, ['board' => $board])
+            ->call('toggleCompleted', $card->id);
+
+        $card->refresh();
+        $this->assertNotNull($card->completed_at);
+        $this->assertSame($list->id, $card->list_id);
+        $this->assertSame(3, $card->position);
+
+        Livewire::actingAs($user)
+            ->test(Show::class, ['board' => $board])
+            ->call('toggleCompleted', $card->id);
+
+        $this->assertNull($card->fresh()->completed_at);
+    }
+
+    public function test_due_badge_tone_reflects_completed_overdue_today_and_upcoming(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-15 12:00:00'));
+
+        $user = User::factory()->create();
+        $board = Board::factory()->for($user)->create();
+        $list = BoardList::factory()->for($board)->create();
+
+        $noDueDate = Card::factory()->for($list, 'list')->create(['due_date' => null]);
+        $overdue = Card::factory()->for($list, 'list')->create(['due_date' => '2026-06-10 09:00:00']);
+        $dueToday = Card::factory()->for($list, 'list')->create(['due_date' => '2026-06-15 18:00:00']);
+        $upcoming = Card::factory()->for($list, 'list')->create(['due_date' => '2026-07-01 09:00:00']);
+        $completedOverdue = Card::factory()->for($list, 'list')->create([
+            'due_date' => '2026-06-01 09:00:00',
+            'completed_at' => now(),
+        ]);
+
+        $this->assertNull($noDueDate->dueBadgeTone());
+        $this->assertSame('overdue', $overdue->dueBadgeTone());
+        $this->assertSame('today', $dueToday->dueBadgeTone());
+        $this->assertSame('upcoming', $upcoming->dueBadgeTone());
+        $this->assertSame('completed', $completedOverdue->dueBadgeTone());
+
+        Carbon::setTestNow();
     }
 
     public function test_card_actions_404_when_card_belongs_to_a_different_board(): void

@@ -5,8 +5,11 @@ namespace App\Livewire\Boards;
 use App\Models\Board;
 use App\Models\BoardList;
 use App\Models\Card;
+use App\Models\Label;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
@@ -26,6 +29,8 @@ class Show extends Component
     public string $cardTitle = '';
 
     public string $cardDescription = '';
+
+    public string $cardDueDate = '';
 
     public function mount(Board $board): void
     {
@@ -120,6 +125,7 @@ class Show extends Component
         $this->editingCard = $card;
         $this->cardTitle = $card->title;
         $this->cardDescription = (string) $card->description;
+        $this->cardDueDate = $card->due_date?->format('Y-m-d\TH:i') ?? '';
         $this->showCardModal = true;
     }
 
@@ -132,15 +138,24 @@ class Show extends Component
         $data = $this->validate([
             'cardTitle' => ['required', 'string', 'max:255'],
             'cardDescription' => ['nullable', 'string', 'max:5000'],
-        ], attributes: ['cardTitle' => 'title', 'cardDescription' => 'description']);
+            'cardDueDate' => ['nullable', 'date'],
+        ], attributes: ['cardTitle' => 'title', 'cardDescription' => 'description', 'cardDueDate' => 'due date']);
 
         $this->editingCard->update([
             'title' => $data['cardTitle'],
             'description' => $data['cardDescription'],
+            'due_date' => $data['cardDueDate'] !== null && $data['cardDueDate'] !== ''
+                ? Carbon::parse($data['cardDueDate'])
+                : null,
         ]);
 
         $this->closeCardModal();
         $this->board->unsetRelation('lists');
+    }
+
+    public function clearDueDate(): void
+    {
+        $this->cardDueDate = '';
     }
 
     public function deleteCard(int $cardId): void
@@ -157,7 +172,44 @@ class Show extends Component
     {
         $this->showCardModal = false;
         $this->editingCard = null;
-        $this->reset(['cardTitle', 'cardDescription']);
+        $this->reset(['cardTitle', 'cardDescription', 'cardDueDate']);
+    }
+
+    public function toggleCompleted(int $cardId): void
+    {
+        $this->authorize('update', $this->board);
+
+        $card = $this->ownedCard($cardId);
+
+        $card->update(['completed_at' => $card->completed_at ? null : now()]);
+
+        if ($this->editingCard?->id === $card->id) {
+            $this->editingCard = $card->fresh(['list', 'labels']);
+        }
+
+        $this->board->unsetRelation('lists');
+    }
+
+    public function toggleCardLabel(int $cardId, int $labelId): void
+    {
+        $this->authorize('update', $this->board);
+
+        $card = $this->ownedCard($cardId);
+        $label = $this->ownedLabel($labelId);
+
+        $card->labels()->toggle($label->id);
+
+        if ($this->editingCard?->id === $card->id) {
+            $this->editingCard = $card->fresh(['list', 'labels']);
+        }
+
+        $this->board->unsetRelation('lists');
+    }
+
+    #[On('labels-updated')]
+    public function refreshLabels(): void
+    {
+        //
     }
 
     /**
@@ -203,20 +255,30 @@ class Show extends Component
 
     private function ownedCard(int $cardId): Card
     {
-        $card = Card::with('list')->find($cardId);
+        $card = Card::with(['list', 'labels'])->find($cardId);
 
         abort_if(! $card || $card->list->board_id !== $this->board->id, 404);
 
         return $card;
     }
 
+    private function ownedLabel(int $labelId): Label
+    {
+        $label = $this->board->labels()->whereKey($labelId)->first();
+
+        abort_if(! $label, 404);
+
+        return $label;
+    }
+
     public function render()
     {
         return view('livewire.boards.show', [
             'lists' => $this->board->lists()
-                ->with(['cards' => fn ($query) => $query->orderBy('position')->orderBy('id')])
+                ->with(['cards' => fn ($query) => $query->orderBy('position')->orderBy('id')->with('labels')])
                 ->orderBy('position')
                 ->get(),
+            'labels' => $this->board->labels()->orderBy('name')->get(),
         ]);
     }
 }

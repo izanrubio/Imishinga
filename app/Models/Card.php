@@ -43,4 +43,28 @@ class Card extends Model
     {
         return $this->hasMany(Attachment::class);
     }
+
+    /**
+     * The visual tone for the due date badge, or null when there is no due date.
+     */
+    public function dueBadgeTone(): ?string
+    {
+        if (! $this->due_date) {
+            return null;
+        }
+
+        if ($this->completed_at) {
+            return 'completed';
+        }
+
+        if ($this->due_date->isToday()) {
+            return 'today';
+        }
+
+        if ($this->due_date->isPast()) {
+            return 'overdue';
+        }
+
+        return 'upcoming';
+    }
 }
