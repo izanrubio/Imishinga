@@ -1,17 +1,17 @@
 <div style="background-color: {{ $board->background_color ?? '#f3f4f6' }}" class="min-h-[calc(100vh-3.5rem)]">
-    <div class="px-6 pt-6 pb-2 flex items-start justify-between gap-4">
-        <div>
+    <div class="px-4 sm:px-6 pt-6 pb-2 flex flex-wrap items-start justify-between gap-3">
+        <div class="min-w-0">
             <a href="{{ route('boards.index') }}" class="text-white/80 hover:text-white text-sm">&larr; Boards</a>
-            <h1 class="text-2xl font-semibold text-white mt-1">{{ $board->name }}</h1>
+            <h1 class="text-2xl font-semibold text-white mt-1 break-words">{{ $board->name }}</h1>
             @if ($board->description)
-                <p class="text-white/80 text-sm mt-1">{{ $board->description }}</p>
+                <p class="text-white/80 text-sm mt-1 break-words">{{ $board->description }}</p>
             @endif
         </div>
 
         <livewire:boards.label-manager :board="$board" :key="'label-manager-'.$board->id" />
     </div>
 
-    <div class="flex gap-4 overflow-x-auto items-start px-6 pb-6">
+    <div class="flex gap-4 overflow-x-auto snap-x snap-mandatory items-start px-4 sm:px-6 pb-6">
         <div wire:ignore style="display: contents"
             x-data
             x-init="
@@ -19,6 +19,9 @@
                     animation: 150,
                     handle: '.list-drag-handle',
                     draggable: '[data-list-id]',
+                    delay: 180,
+                    delayOnTouchOnly: true,
+                    touchStartThreshold: 5,
                     onEnd: () => {
                         $wire.reorderLists(
                             Array.from($el.nextElementSibling.querySelectorAll('[data-list-id]'))
@@ -31,7 +34,7 @@
         <div data-lists-container class="flex gap-4">
             @foreach ($lists as $list)
                 <div wire:key="list-{{ $list->id }}" data-list-id="{{ $list->id }}"
-                    class="w-72 flex-shrink-0 bg-gray-100 rounded-lg p-3">
+                    class="w-[85vw] max-w-[320px] sm:w-72 sm:max-w-none flex-shrink-0 snap-start bg-gray-100 rounded-lg p-3">
                     <div x-data="{ editing: false, name: @js($list->name) }" class="flex items-start justify-between gap-2 mb-3 list-drag-handle cursor-grab active:cursor-grabbing">
                         <template x-if="!editing">
                             <h2 x-on:click="editing = true" class="font-medium text-gray-800 cursor-text px-1 py-0.5 rounded hover:bg-gray-200 flex-1" x-text="name"></h2>
@@ -47,7 +50,7 @@
 
                         <button type="button"
                             x-on:click="if (confirm('Delete this list and its cards?')) { $wire.deleteList({{ $list->id }}) }"
-                            class="text-gray-400 hover:text-red-600 text-sm">&times;</button>
+                            class="text-gray-400 hover:text-red-600 text-sm w-10 h-10 -m-3 inline-flex items-center justify-center flex-shrink-0">&times;</button>
                     </div>
 
                     <div wire:ignore style="display: contents"
@@ -57,6 +60,9 @@
                                 group: 'cards',
                                 animation: 150,
                                 draggable: '[data-card-id]',
+                                delay: 180,
+                                delayOnTouchOnly: true,
+                                touchStartThreshold: 5,
                                 onEnd: (evt) => {
                                     $wire.reorderCards(
                                         Number(evt.item.dataset.cardId),
@@ -83,7 +89,8 @@
                                 <div class="flex items-start gap-2">
                                     <button type="button" x-on:click.stop="$wire.toggleCompleted({{ $card->id }})"
                                         title="{{ $card->completed_at ? 'Mark not complete' : 'Mark complete' }}"
-                                        class="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full border-2 {{ $card->completed_at ? 'bg-green-500 border-green-500' : 'border-gray-300 hover:border-gray-400' }}">
+                                        class="mt-0.5 flex-shrink-0 w-10 h-10 -m-3 inline-flex items-center justify-center">
+                                        <span class="w-4 h-4 rounded-full border-2 {{ $card->completed_at ? 'bg-green-500 border-green-500' : 'border-gray-300 hover:border-gray-400' }}"></span>
                                     </button>
 
                                     <div class="flex-1 min-w-0">
@@ -92,7 +99,7 @@
                                             <p class="text-gray-500 text-xs mt-1 truncate">{{ $card->description }}</p>
                                         @endif
 
-                                        <div class="flex items-center gap-1.5 mt-1">
+                                        <div class="flex items-center gap-1.5 mt-1 flex-wrap">
                                             @if ($card->due_date)
                                                 @php $tone = $card->dueBadgeTone(); @endphp
                                                 <span @class([
@@ -153,7 +160,7 @@
             @endforeach
         </div>
 
-        <form wire:submit="addList" class="w-72 flex-shrink-0">
+        <form wire:submit="addList" class="w-[85vw] max-w-[320px] sm:w-72 sm:max-w-none flex-shrink-0 snap-start">
             <input wire:model="newListName" type="text" placeholder="+ Add a list"
                 class="w-full rounded-lg bg-white/90 border-transparent text-sm px-3 py-2 placeholder-gray-500 focus:bg-white focus:border-blue-500 focus:ring-blue-500">
             @error('newListName') <p class="mt-1 text-xs text-red-100 bg-red-600/80 rounded px-2 py-1">{{ $message }}</p> @enderror
@@ -161,98 +168,6 @@
     </div>
 
     @if ($showCardModal)
-        <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50" x-data x-on:keydown.escape.window="$wire.closeCardModal()">
-            <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto" x-on:click.outside="$wire.closeCardModal()">
-                <h2 class="text-lg font-semibold mb-4">Edit card</h2>
-
-                <form id="save-card-form" wire:submit="saveCard" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Title</label>
-                        <input wire:model="cardTitle" type="text" autofocus
-                            class="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        @error('cardTitle') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Description</label>
-                        <textarea wire:model="cardDescription" rows="4"
-                            class="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
-                        @error('cardDescription') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Labels</label>
-                        <div class="flex flex-wrap gap-2">
-                            @forelse ($labels as $label)
-                                @php $assigned = $editingCard?->labels->contains($label->id); @endphp
-                                <button type="button" wire:click="toggleCardLabel({{ $editingCard?->id }}, {{ $label->id }})"
-                                    class="text-xs px-2 py-1 rounded-full border {{ $assigned ? 'text-white border-transparent' : 'text-gray-600 border-gray-300 hover:border-gray-400' }}"
-                                    @style([ 'background-color: '.$label->color => $assigned ])>
-                                    {{ $label->name }}
-                                </button>
-                            @empty
-                                <p class="text-xs text-gray-400">No labels yet — create some from the board's "Labels" button.</p>
-                            @endforelse
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Due date</label>
-                        <div class="flex gap-2 mt-1">
-                            <input wire:model="cardDueDate" type="datetime-local"
-                                class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            <button type="button" wire:click="clearDueDate"
-                                class="px-3 py-1 text-sm rounded-md text-gray-600 hover:bg-gray-100">
-                                Clear
-                            </button>
-                        </div>
-                        @error('cardDueDate') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        <input id="card-completed-toggle" type="checkbox" wire:click="toggleCompleted({{ $editingCard?->id }})"
-                            @checked($editingCard?->completed_at)
-                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                        <label for="card-completed-toggle" class="text-sm text-gray-700">Completed</label>
-                    </div>
-
-                </form>
-
-                @if ($editingCard)
-                    <div class="mt-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Checklists</label>
-                        <livewire:boards.checklist-manager :card="$editingCard" :key="'checklist-manager-'.$editingCard->id" />
-                    </div>
-
-                    <div class="mt-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Attachments</label>
-                        <livewire:boards.attachment-manager :card="$editingCard" :key="'attachment-manager-'.$editingCard->id" />
-                    </div>
-
-                    <div class="mt-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Comments</label>
-                        <livewire:boards.comment-manager :card="$editingCard" :key="'comment-manager-'.$editingCard->id" />
-                    </div>
-                @endif
-
-                <div class="flex justify-between items-center pt-4">
-                    <button type="button"
-                        x-on:click="if (confirm('Delete this card?')) { $wire.deleteCard({{ $editingCard?->id }}) }"
-                        class="px-3 py-2 text-sm rounded-md text-red-600 hover:bg-red-50">
-                        Delete
-                    </button>
-
-                    <div class="flex gap-2">
-                        <button type="button" wire:click="closeCardModal"
-                            class="px-4 py-2 text-sm rounded-md text-gray-700 hover:bg-gray-100">
-                            Cancel
-                        </button>
-                        <button type="submit" form="save-card-form" class="px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700">
-                            Save
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+        @include('livewire.boards.partials.card-modal')
     @endif
 </div>

@@ -1,7 +1,7 @@
 <div class="max-w-7xl mx-auto px-4 py-8">
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 class="text-2xl font-semibold">Your boards</h1>
-        <button wire:click="createNew" class="bg-blue-600 text-white rounded-md px-4 py-2 text-sm font-medium hover:bg-blue-700">
+        <button wire:click="createNew" class="bg-blue-600 text-white rounded-md px-4 min-h-[40px] inline-flex items-center text-sm font-medium hover:bg-blue-700">
             + Create board
         </button>
     </div>
@@ -19,15 +19,15 @@
                     </div>
                 </a>
 
-                <div class="absolute top-2 right-2 hidden group-hover:flex gap-1">
+                <div class="absolute top-2 right-2 flex sm:hidden sm:group-hover:flex gap-1">
                     <button wire:click="editBoard({{ $board->id }})"
-                        class="bg-white/90 rounded p-1 text-xs text-gray-700 hover:bg-white shadow">
+                        class="bg-white/90 rounded px-2 min-h-[40px] inline-flex items-center text-xs text-gray-700 hover:bg-white shadow">
                         Edit
                     </button>
                     <button
                         x-data
                         x-on:click="if (confirm('Delete this board and everything in it?')) { $wire.deleteBoard({{ $board->id }}) }"
-                        class="bg-white/90 rounded p-1 text-xs text-red-600 hover:bg-white shadow">
+                        class="bg-white/90 rounded px-2 min-h-[40px] inline-flex items-center text-xs text-red-600 hover:bg-white shadow">
                         Delete
                     </button>
                 </div>
@@ -38,8 +38,8 @@
     </div>
 
     @if ($showFormModal)
-        <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50" x-data x-on:keydown.escape.window="$wire.showFormModal = false">
-            <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6" x-on:click.outside="$wire.showFormModal = false">
+        <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" x-data x-on:keydown.escape.window="$wire.showFormModal = false">
+            <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto" x-on:click.outside="$wire.showFormModal = false">
                 <h2 class="text-lg font-semibold mb-4">{{ $editing ? 'Edit board' : 'Create board' }}</h2>
 
                 <form wire:submit="save" class="space-y-4">
@@ -62,7 +62,7 @@
                         <div class="flex flex-wrap gap-2">
                             @foreach (\App\Livewire\Boards\Index::COLORS as $color)
                                 <button type="button" wire:click="$set('background_color', '{{ $color }}')"
-                                    class="w-8 h-8 rounded-full {{ $background_color === $color ? 'ring-2 ring-offset-2 ring-blue-500' : '' }}"
+                                    class="w-10 h-10 rounded-full {{ $background_color === $color ? 'ring-2 ring-offset-2 ring-blue-500' : '' }}"
                                     style="background-color: {{ $color }}"></button>
                             @endforeach
                         </div>
@@ -70,10 +70,10 @@
 
                     <div class="flex justify-end gap-2 pt-2">
                         <button type="button" wire:click="$set('showFormModal', false)"
-                            class="px-4 py-2 text-sm rounded-md text-gray-700 hover:bg-gray-100">
+                            class="px-4 min-h-[40px] rounded-md text-sm text-gray-700 hover:bg-gray-100">
                             Cancel
                         </button>
-                        <button type="submit" class="px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700">
+                        <button type="submit" class="px-4 min-h-[40px] rounded-md text-sm bg-blue-600 text-white hover:bg-blue-700">
                             Save
                         </button>
                     </div>
