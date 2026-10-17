@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Log in · Imishinga</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style type="text/tailwindcss">
+@theme {
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-canvas: oklch(0.975 0.004 80);
+  --color-surface: oklch(1 0 0);
+  --color-surface-muted: oklch(0.955 0.005 80);
+  --color-list: oklch(0.962 0.005 80);
+  --color-border: oklch(0.91 0.006 80);
+  --color-border-strong: oklch(0.8 0.008 80);
+  --color-ink: oklch(0.22 0.01 70);
+  --color-ink-muted: oklch(0.43 0.01 70);
+  --color-ink-subtle: oklch(0.52 0.01 70);
+  --color-scrim: oklch(0.2 0.02 260 / 0.3);
+  --color-accent: oklch(0.5 0.18 280);
+  --color-accent-hover: oklch(0.44 0.18 280);
+  --color-accent-soft: oklch(0.95 0.03 285);
+  --color-accent-ink: oklch(0.4 0.16 280);
+  --color-accent-fg: oklch(1 0 0);
+  --color-danger: oklch(0.52 0.19 25);
+  --color-danger-hover: oklch(0.46 0.19 25);
+  --color-danger-soft: oklch(0.955 0.03 20);
+  --color-danger-ink: oklch(0.44 0.16 25);
+  --color-warn: oklch(0.75 0.15 80);
+  --color-warn-soft: oklch(0.96 0.06 90);
+  --color-warn-ink: oklch(0.4 0.09 70);
+  --color-ok: oklch(0.52 0.13 155);
+  --color-ok-soft: oklch(0.95 0.04 155);
+  --color-ok-ink: oklch(0.4 0.1 155);
+  --color-label-red: oklch(0.62 0.19 25);
+  --color-label-orange: oklch(0.6 0.17 55);
+  --color-label-amber: oklch(0.62 0.13 90);
+  --color-label-green: oklch(0.65 0.15 150);
+  --color-label-teal: oklch(0.65 0.11 195);
+  --color-label-blue: oklch(0.6 0.15 250);
+  --color-label-violet: oklch(0.58 0.17 295);
+  --color-label-pink: oklch(0.68 0.16 350);
+  --color-board-slate: oklch(0.48 0.07 250);
+  --color-board-sage: oklch(0.5 0.07 150);
+  --color-board-clay: oklch(0.5 0.09 45);
+  --color-board-plum: oklch(0.45 0.09 330);
+  --color-board-ochre: oklch(0.5 0.08 85);
+  --color-board-teal: oklch(0.47 0.07 200);
+  --color-board-rose: oklch(0.5 0.1 10);
+  --color-board-graphite: oklch(0.4 0.01 260);
+  --radius-sm: 0.375rem; --radius-md: 0.5rem; --radius-lg: 0.625rem; --radius-xl: 0.875rem; --radius-2xl: 1.25rem;
+  --shadow-xs: 0 1px 1px oklch(0.2 0.02 70 / 0.06);
+  --shadow-sm: 0 1px 2px oklch(0.2 0.02 70 / 0.07), 0 1px 3px oklch(0.2 0.02 70 / 0.05);
+  --shadow-md: 0 4px 10px oklch(0.2 0.02 70 / 0.09), 0 1px 3px oklch(0.2 0.02 70 / 0.06);
+  --shadow-lg: 0 12px 28px oklch(0.2 0.02 70 / 0.16), 0 4px 10px oklch(0.2 0.02 70 / 0.08);
+  --shadow-xl: 0 24px 56px oklch(0.2 0.02 70 / 0.26);
+}
+@layer base {
+  body { background: var(--color-canvas); color: var(--color-ink); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+  :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+}
+</style></head><body class=""><main class="flex min-h-dvh items-center justify-center bg-canvas px-4 py-10"><div class="w-full max-w-sm"><div class="mb-6 flex items-center justify-center gap-2 text-xl font-semibold tracking-tight"><span class="flex size-9 items-center justify-center rounded-lg bg-accent text-accent-fg"><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 7v7"/><path d="M12 7v4"/><path d="M16 7v9"/></svg></span>Imishinga</div><form class="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-6 shadow-sm"><h1 class="text-2xl font-semibold tracking-tight">Log in</h1><div class="flex flex-col gap-1.5"><label for="em" class="text-sm font-medium">Email</label><input id="em" type="email" value="" placeholder="you@example.com" class="h-10 w-full rounded-lg border bg-surface px-3 text-sm placeholder:text-ink-subtle border-border-strong"></div><div class="flex flex-col gap-1.5"><label for="pw" class="text-sm font-medium">Password</label><input id="pw" type="password" value="" placeholder="" class="h-10 w-full rounded-lg border bg-surface px-3 text-sm placeholder:text-ink-subtle border-border-strong"></div><button type="button" class="inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium h-10 px-4 whitespace-nowrap transition-colors disabled:cursor-not-allowed bg-accent text-accent-fg hover:bg-accent-hover disabled:bg-border-strong disabled:text-surface w-full">Log in</button></form></div></main></body></html>
