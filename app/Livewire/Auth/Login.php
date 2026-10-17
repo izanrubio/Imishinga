@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
-#[Layout('components.layouts.app')]
+#[Layout('components.layouts.guest')]
 class Login extends Component
 {
     public string $email = '';
@@ -21,12 +21,12 @@ class Login extends Component
         ]);
 
         if (! Auth::attempt($credentials)) {
-            $this->addError('email', 'These credentials do not match our records.');
+            $this->addError('credentials', 'These credentials do not match our records.');
 
             return;
         }
 
-        request()->session()->regenerate();
+        session()->regenerate();
 
         $this->redirectRoute('boards.index');
     }

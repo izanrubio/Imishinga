@@ -2,18 +2,18 @@
 
 namespace App\Livewire\Boards;
 
+use App\Enums\BoardColor;
 use App\Models\Attachment;
 use App\Models\Board;
 use App\Models\Card;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
 class Index extends Component
 {
-    public const array COLORS = ['#0079BF', '#D29034', '#519839', '#B04632', '#89609E', '#CD5A91', '#4BBF6B', '#838C91'];
-
     public bool $showFormModal = false;
 
     public ?Board $editing = null;
@@ -22,16 +22,24 @@ class Index extends Component
 
     public string $description = '';
 
-    public string $background_color = self::COLORS[0];
+    public string $background_color = '';
+
+    public ?Board $deleting = null;
+
+    public int $deletingListsCount = 0;
+
+    public int $deletingCardsCount = 0;
 
     public function mount(): void
     {
         $this->authorize('viewAny', Board::class);
+
+        $this->background_color = BoardColor::Slate->value;
     }
 
     public function boards()
     {
-        return Auth::user()->boards()->latest()->get();
+        return Auth::user()->boards()->withCount(['lists', 'cards'])->latest()->get();
     }
 
     public function createNew(): void
@@ -39,7 +47,7 @@ class Index extends Component
         $this->authorize('create', Board::class);
 
         $this->reset(['editing', 'name', 'description', 'background_color']);
-        $this->background_color = self::COLORS[0];
+        $this->background_color = BoardColor::Slate->value;
         $this->showFormModal = true;
     }
 
@@ -50,8 +58,14 @@ class Index extends Component
         $this->editing = $board;
         $this->name = $board->name;
         $this->description = (string) $board->description;
-        $this->background_color = (string) ($board->background_color ?? self::COLORS[0]);
+        $this->background_color = $board->colorEnum()->value;
         $this->showFormModal = true;
+    }
+
+    public function closeFormModal(): void
+    {
+        $this->showFormModal = false;
+        $this->reset(['editing', 'name', 'description', 'background_color']);
     }
 
     public function save(): void
@@ -59,7 +73,7 @@ class Index extends Component
         $data = $this->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
-            'background_color' => ['required', 'string', 'max:20'],
+            'background_color' => ['required', Rule::enum(BoardColor::class)],
         ]);
 
         if ($this->editing) {
@@ -70,8 +84,21 @@ class Index extends Component
             Auth::user()->boards()->create($data);
         }
 
-        $this->showFormModal = false;
-        $this->reset(['editing', 'name', 'description', 'background_color']);
+        $this->closeFormModal();
+    }
+
+    public function confirmDelete(Board $board, int $listsCount, int $cardsCount): void
+    {
+        $this->authorize('delete', $board);
+
+        $this->deleting = $board;
+        $this->deletingListsCount = $listsCount;
+        $this->deletingCardsCount = $cardsCount;
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->deleting = null;
     }
 
     public function deleteBoard(Board $board): void
@@ -82,6 +109,8 @@ class Index extends Component
         Attachment::purgeFilesForCardIds($cardIds);
 
         $board->delete();
+
+        $this->deleting = null;
     }
 
     public function render()

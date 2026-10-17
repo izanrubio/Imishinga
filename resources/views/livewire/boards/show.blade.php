@@ -1,4 +1,4 @@
-<div style="background-color: {{ $board->background_color ?? '#f3f4f6' }}" class="min-h-[calc(100vh-3.5rem)]">
+<div class="{{ $board->colorClass() }} min-h-[calc(100vh-3.5rem)]">
     <div class="px-4 sm:px-6 pt-6 pb-2 flex flex-wrap items-start justify-between gap-3">
         <div class="min-w-0">
             <a href="{{ route('boards.index') }}" class="text-white/80 hover:text-white text-sm">&larr; Boards</a>
