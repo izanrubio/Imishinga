@@ -2,24 +2,28 @@
 
 namespace App\Livewire\Boards;
 
+use App\Enums\LabelColor;
 use App\Models\Board;
 use App\Models\Label;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 
 class LabelManager extends Component
 {
-    public const array COLORS = ['#0079BF', '#D29034', '#519839', '#B04632', '#89609E', '#CD5A91', '#4BBF6B', '#838C91'];
-
     public Board $board;
 
     public bool $showModal = false;
+
+    public bool $creating = false;
+
+    public ?int $confirmingDeleteId = null;
 
     public ?Label $editing = null;
 
     public string $name = '';
 
-    public string $color = self::COLORS[0];
+    public string $color = LabelColor::Blue->value;
 
     public function mount(Board $board): void
     {
@@ -39,6 +43,7 @@ class LabelManager extends Component
     public function closeModal(): void
     {
         $this->showModal = false;
+        $this->confirmingDeleteId = null;
         $this->resetForm();
     }
 
@@ -46,6 +51,12 @@ class LabelManager extends Component
     {
         $this->authorize('update', $this->board);
 
+        $this->resetForm();
+        $this->creating = true;
+    }
+
+    public function cancelForm(): void
+    {
         $this->resetForm();
     }
 
@@ -57,7 +68,7 @@ class LabelManager extends Component
 
         $this->editing = $label;
         $this->name = $label->name;
-        $this->color = $label->color;
+        $this->color = LabelColor::fromValueOrDefault($label->color)->value;
     }
 
     public function save(): void
@@ -66,7 +77,12 @@ class LabelManager extends Component
 
         $data = $this->validate([
             'name' => ['required', 'string', 'max:255'],
-            'color' => ['required', 'string', 'max:20'],
+            'color' => ['required', Rule::enum(LabelColor::class)],
+        ], [
+            'name.required' => 'Name is required.',
+            'name.max' => 'Name must be 255 characters or fewer.',
+            'color.required' => 'Choose a colour.',
+            'color.enum' => 'Choose a colour.',
         ]);
 
         if ($this->editing) {
@@ -79,11 +95,24 @@ class LabelManager extends Component
         $this->resetForm();
     }
 
+    public function confirmDelete(int $labelId): void
+    {
+        $this->authorize('update', $this->board);
+
+        $this->confirmingDeleteId = $this->ownedLabel($labelId)->id;
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->confirmingDeleteId = null;
+    }
+
     public function delete(int $labelId): void
     {
         $this->authorize('update', $this->board);
 
         $this->ownedLabel($labelId)->delete();
+        $this->confirmingDeleteId = null;
 
         $this->dispatch('labels-updated');
         $this->resetForm();
@@ -92,8 +121,10 @@ class LabelManager extends Component
     private function resetForm(): void
     {
         $this->editing = null;
+        $this->creating = false;
         $this->name = '';
-        $this->color = self::COLORS[0];
+        $this->color = LabelColor::Blue->value;
+        $this->resetValidation();
     }
 
     private function ownedLabel(int $labelId): Label
@@ -108,7 +139,7 @@ class LabelManager extends Component
     public function render()
     {
         return view('livewire.boards.label-manager', [
-            'labels' => $this->board->labels()->orderBy('name')->get(),
+            'labels' => $this->board->labels()->withCount('cards')->orderBy('name')->get(),
         ]);
     }
 }

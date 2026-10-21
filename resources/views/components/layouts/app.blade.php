@@ -7,10 +7,10 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
-<body class="min-h-dvh overflow-x-hidden">
-    <div id="app" class="min-h-dvh">
+<body @class(['overflow-x-hidden', 'min-h-dvh' => ! ($fullHeight ?? false), 'h-dvh overflow-hidden' => $fullHeight ?? false])>
+    <div id="app" @class(['min-h-dvh' => ! ($fullHeight ?? false), 'flex h-dvh flex-col' => $fullHeight ?? false, $appClass ?? ''])>
         <header class="sticky top-0 z-30 border-b border-border bg-surface">
-            <nav aria-label="Main" class="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
+            <nav aria-label="Main" @class(['flex h-14 items-center justify-between gap-3 px-4 sm:px-6', 'mx-auto max-w-7xl' => ! ($fullHeight ?? false)])>
                 <a href="{{ route('boards.index') }}" class="-ml-1 flex items-center gap-2 rounded-lg p-1 text-base font-semibold tracking-tight">
                     <span class="flex size-7 items-center justify-center rounded-lg bg-accent text-accent-fg">
                         <x-icon name="kanban" class="size-4" />
@@ -34,7 +34,7 @@
             </nav>
         </header>
 
-        <main>
+        <main @class(['flex min-h-0 flex-1 flex-col' => $fullHeight ?? false])>
             {{ $slot }}
         </main>
     </div>

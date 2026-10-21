@@ -11,7 +11,7 @@
     @if ($onClose) x-on:keydown.escape.window="{{ $onClose }}" @endif>
     <div role="alertdialog" aria-modal="true" aria-label="{{ $label }}"
         @if ($onClose) x-on:click.outside="{{ $onClose }}" @endif
-        class="w-full max-w-sm rounded-2xl border border-border bg-surface p-5 shadow-xl">
+        class="w-full max-w-sm rounded-2xl border border-border bg-surface p-5 text-ink shadow-xl">
         <div class="flex size-10 items-center justify-center rounded-full {{ $iconTone }}">
             <x-icon :name="$icon" class="size-5" />
         </div>

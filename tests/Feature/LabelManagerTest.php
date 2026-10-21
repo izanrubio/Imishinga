@@ -24,13 +24,13 @@ class LabelManagerTest extends TestCase
         Livewire::actingAs($user)
             ->test(LabelManager::class, ['board' => $board])
             ->set('name', 'Urgent')
-            ->set('color', '#B04632')
+            ->set('color', 'red')
             ->call('save');
 
         $this->assertDatabaseHas('labels', [
             'board_id' => $board->id,
             'name' => 'Urgent',
-            'color' => '#B04632',
+            'color' => 'red',
         ]);
     }
 
@@ -38,20 +38,20 @@ class LabelManagerTest extends TestCase
     {
         $user = User::factory()->create();
         $board = Board::factory()->for($user)->create();
-        $label = Label::factory()->for($board)->create(['name' => 'Old', 'color' => '#000000']);
+        $label = Label::factory()->for($board)->create(['name' => 'Old', 'color' => 'blue']);
 
         Livewire::actingAs($user)
             ->test(LabelManager::class, ['board' => $board])
             ->call('startEdit', $label->id)
             ->assertSet('name', 'Old')
             ->set('name', 'New name')
-            ->set('color', '#519839')
+            ->set('color', 'green')
             ->call('save');
 
         $this->assertDatabaseHas('labels', [
             'id' => $label->id,
             'name' => 'New name',
-            'color' => '#519839',
+            'color' => 'green',
         ]);
     }
 

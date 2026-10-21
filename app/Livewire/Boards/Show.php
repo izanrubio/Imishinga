@@ -9,16 +9,16 @@ use App\Models\Card;
 use App\Models\Label;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
-use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
-#[Layout('components.layouts.app')]
 class Show extends Component
 {
     public Board $board;
 
     public string $newListName = '';
+
+    public ?int $confirmingDeleteListId = null;
 
     /** @var array<int, string> */
     public array $newCardTitle = [];
@@ -75,6 +75,18 @@ class Show extends Component
         $this->board->unsetRelation('lists');
     }
 
+    public function confirmDeleteList(int $listId): void
+    {
+        $this->authorize('update', $this->board);
+
+        $this->confirmingDeleteListId = $this->ownedList($listId)->id;
+    }
+
+    public function cancelDeleteList(): void
+    {
+        $this->confirmingDeleteListId = null;
+    }
+
     public function deleteList(int $listId): void
     {
         $this->authorize('update', $this->board);
@@ -83,6 +95,8 @@ class Show extends Component
 
         Attachment::purgeFilesForCardIds($list->cards()->pluck('id'));
         $list->delete();
+
+        $this->confirmingDeleteListId = null;
 
         $this->board->unsetRelation('lists');
     }
@@ -301,6 +315,7 @@ class Show extends Component
     {
         return view('livewire.boards.show', [
             'lists' => $this->board->lists()
+                ->withCount('cards')
                 ->with(['cards' => fn ($query) => $query->orderBy('position')->orderBy('id')
                     ->with('labels')
                     ->withCount([
@@ -312,6 +327,9 @@ class Show extends Component
                 ->orderBy('position')
                 ->get(),
             'labels' => $this->board->labels()->orderBy('name')->get(),
+        ])->layout('components.layouts.app', [
+            'fullHeight' => true,
+            'appClass' => $this->board->colorClass(),
         ]);
     }
 }

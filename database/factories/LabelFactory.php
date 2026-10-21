@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Livewire\Boards\LabelManager;
+use App\Enums\LabelColor;
 use App\Models\Board;
 use App\Models\Label;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -22,7 +22,7 @@ class LabelFactory extends Factory
         return [
             'board_id' => Board::factory(),
             'name' => fake()->word(),
-            'color' => fake()->randomElement(LabelManager::COLORS),
+            'color' => fake()->randomElement(LabelColor::cases())->value,
         ];
     }
 }

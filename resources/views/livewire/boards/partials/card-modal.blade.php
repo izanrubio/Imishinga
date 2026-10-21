@@ -62,8 +62,7 @@
                             @forelse ($labels as $label)
                                 @php $assigned = $editingCard?->labels->contains($label->id); @endphp
                                 <button type="button" wire:click="toggleCardLabel({{ $editingCard?->id }}, {{ $label->id }})"
-                                    class="text-xs px-2 min-h-[32px] inline-flex items-center rounded-full border {{ $assigned ? 'text-white border-transparent' : 'text-gray-600 border-gray-300 hover:border-gray-400' }}"
-                                    @style([ 'background-color: '.$label->color => $assigned ])>
+                                    class="text-xs px-2 min-h-[32px] inline-flex items-center rounded-full border {{ $assigned ? 'text-white border-transparent '.$label->colorClass() : 'text-gray-600 border-gray-300 hover:border-gray-400' }}">
                                     {{ $label->name }}
                                 </button>
                             @empty

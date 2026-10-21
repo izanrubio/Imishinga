@@ -76,3 +76,42 @@
         outline-offset: 2px;
     }
 }
+
+[x-cloak] {
+    display: none !important;
+}
+
+/* SortableJS applies a single class per drag state, so the design's states
+   are named classes here rather than inline utilities. */
+.card-chosen,
+.card-drag {
+    @apply rotate-3 cursor-grabbing border-accent opacity-95 shadow-lg;
+}
+
+.card-ghost {
+    @apply h-16 rotate-0 overflow-hidden rounded-lg border-2 border-dashed border-accent/50 bg-accent-soft opacity-100 shadow-none;
+}
+
+.card-ghost > * {
+    @apply invisible;
+}
+
+.list-column:has(.card-ghost) {
+    @apply ring-2 ring-accent;
+}
+
+.list-chosen,
+.list-drag {
+    @apply shadow-lg;
+}
+
+.list-ghost {
+    @apply opacity-60 ring-2 ring-accent;
+}
+
+/* Scroll snapping fights SortableJS's edge auto-scroll, so it is switched off
+   while a card or list is being dragged and re-engages on drop. */
+.lists-row:has(.card-ghost),
+.lists-row:has(.list-ghost) {
+    scroll-snap-type: none;
+}
