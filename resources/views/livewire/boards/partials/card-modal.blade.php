@@ -1,136 +1,181 @@
+@php
+    $dueTones = ['overdue' => 'danger', 'today' => 'warn', 'completed' => 'ok', 'upcoming' => 'neutral'];
+    $dueTone = $editingCard?->dueBadgeTone();
+    $isCompleted = (bool) $editingCard?->completed_at;
+@endphp
+
 <div
     x-data="{
         initial: { title: @js($cardTitle), description: @js($cardDescription), dueDate: @js($cardDueDate) },
+        discarding: false,
         isDirty() {
             return this.$wire.cardTitle !== this.initial.title
                 || this.$wire.cardDescription !== this.initial.description
                 || this.$wire.cardDueDate !== this.initial.dueDate;
         },
         attemptClose() {
-            if (this.isDirty() && ! confirm('Discard unsaved changes?')) { return; }
+            if (document.querySelector('[role=alertdialog]')) { return; }
+            if (this.isDirty()) { setTimeout(() => { this.discarding = true; }); return; }
             $wire.closeCardModal();
         },
     }"
-    x-init="
-        document.body.style.overflow = 'hidden';
-        $nextTick(() => $refs.titleInput && $refs.titleInput.focus());
-        return () => { document.body.style.overflow = ''; };
-    "
-    x-on:keydown.escape.window="attemptClose()"
-    class="fixed inset-0 bg-black/40 z-50 flex md:items-center md:justify-center md:p-4"
+    x-init="$nextTick(() => $el.querySelector('#card-title')?.focus())"
 >
     <form id="save-card-form" wire:submit="saveCard" class="hidden" aria-hidden="true"></form>
 
-    <div x-on:click.outside="attemptClose()"
-        class="bg-white w-full h-full md:h-auto md:max-h-[90vh] md:w-full md:max-w-4xl md:rounded-lg md:shadow-lg flex flex-col">
-
-        {{-- Header --}}
-        <div class="flex items-start justify-between gap-3 px-4 sm:px-6 py-4 border-b border-gray-100 flex-shrink-0">
-            <div class="flex-1 min-w-0">
-                <input x-ref="titleInput" form="save-card-form" wire:model="cardTitle" type="text"
-                    class="w-full text-xl font-semibold text-gray-900 border-0 focus:ring-2 focus:ring-blue-500 rounded-md px-2 -mx-2">
-                @if ($editingCard?->list)
-                    <p class="text-sm text-gray-500 mt-1 px-2">in list <span class="font-medium">{{ $editingCard->list->name }}</span></p>
-                @endif
-                @error('cardTitle') <p class="mt-1 text-sm text-red-600 px-2">{{ $message }}</p> @enderror
+    <x-modal label="Card details" class="max-w-2xl" onClose="attemptClose()">
+        <x-slot:header>
+            <div class="flex shrink-0 items-start justify-between gap-3 px-5 pt-4">
+                <div class="min-w-0 flex-1">
+                    <label class="sr-only" for="card-title">Card title</label>
+                    <input id="card-title" form="save-card-form" wire:model="cardTitle" type="text"
+                        @error('cardTitle') aria-invalid="true" aria-describedby="card-title-msg" @enderror
+                        @class([
+                            'w-full rounded-md border bg-transparent px-2 py-1 text-lg font-semibold tracking-tight hover:bg-surface-muted focus:bg-surface',
+                            'text-ink-subtle line-through' => $isCompleted,
+                            'border-danger ring-2 ring-danger-soft' => $errors->has('cardTitle'),
+                            'border-transparent focus:border-accent' => ! $errors->has('cardTitle'),
+                        ])>
+                    @error('cardTitle')
+                        <p id="card-title-msg" class="mt-1 flex items-center gap-1.5 px-2 text-sm text-danger-ink">
+                            <x-icon name="alert-circle" class="size-4" />
+                            {{ $message }}
+                        </p>
+                    @enderror
+                    @if ($editingCard?->list)
+                        <p class="px-2 text-sm text-ink-muted">in list <span class="font-medium text-ink">{{ $editingCard->list->name }}</span></p>
+                    @endif
+                </div>
+                <x-icon-button aria-label="Close" class="shrink-0" x-on:click="attemptClose()">
+                    <x-icon name="x" />
+                </x-icon-button>
             </div>
-            <button type="button" x-on:click="attemptClose()"
-                class="w-10 h-10 -m-2 flex-shrink-0 inline-flex items-center justify-center text-gray-400 hover:text-gray-600">
-                &times;
-            </button>
-        </div>
+        </x-slot:header>
 
-        {{-- Body --}}
-        <div class="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
-            <div class="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-6
-                [grid-template-areas:'description'_'sidebar'_'checklists'_'attachments'_'comments']
-                md:[grid-template-areas:'description_sidebar'_'checklists_sidebar'_'attachments_sidebar'_'comments_sidebar']">
+        <label class="flex min-h-10 w-fit cursor-pointer items-center gap-2.5 text-sm font-medium">
+            <input id="card-completed-toggle" type="checkbox" wire:click="toggleCompleted({{ $editingCard?->id }})"
+                @checked($isCompleted) class="size-5 accent-ok">
+            Mark as complete
+        </label>
 
-                {{-- Description (main) --}}
-                <div class="[grid-area:description]">
-                    <label class="block text-sm font-medium text-gray-700">Description</label>
-                    <textarea form="save-card-form" wire:model="cardDescription" rows="4"
-                        class="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
-                    @error('cardDescription') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
-
-                {{-- Sidebar: labels, due date, completed, delete --}}
-                <div class="[grid-area:sidebar] space-y-6">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Labels</label>
-                        <div class="flex flex-wrap gap-2">
-                            @forelse ($labels as $label)
-                                @php $assigned = $editingCard?->labels->contains($label->id); @endphp
-                                <button type="button" wire:click="toggleCardLabel({{ $editingCard?->id }}, {{ $label->id }})"
-                                    class="text-xs px-2 min-h-[32px] inline-flex items-center rounded-full border {{ $assigned ? 'text-white border-transparent '.$label->colorClass() : 'text-gray-600 border-gray-300 hover:border-gray-400' }}">
-                                    {{ $label->name }}
-                                </button>
-                            @empty
-                                <p class="text-xs text-gray-400">No labels yet — create some from the board's "Labels" button.</p>
-                            @endforelse
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Due date</label>
-                        <div class="flex gap-2 mt-1">
-                            <input form="save-card-form" wire:model="cardDueDate" type="datetime-local"
-                                class="flex-1 min-w-0 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            <button type="button" wire:click="clearDueDate"
-                                class="px-3 min-h-[40px] text-sm rounded-md text-gray-600 hover:bg-gray-100 flex-shrink-0">
-                                Clear
-                            </button>
-                        </div>
-                        @error('cardDueDate') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        <label for="card-completed-toggle" class="inline-flex items-center justify-center w-10 h-10 -m-2 flex-shrink-0">
-                            <input id="card-completed-toggle" type="checkbox" wire:click="toggleCompleted({{ $editingCard?->id }})"
-                                @checked($editingCard?->completed_at)
-                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                        </label>
-                        <label for="card-completed-toggle" class="text-sm text-gray-700 cursor-pointer">Completed</label>
-                    </div>
-
-                    <div class="border-t border-gray-100 pt-4">
-                        <button type="button"
-                            x-on:click="if (confirm('Delete this card?')) { $wire.deleteCard({{ $editingCard?->id }}) }"
-                            class="px-3 min-h-[40px] text-sm rounded-md text-red-600 hover:bg-red-50 w-full text-left">
-                            Delete card
-                        </button>
-                    </div>
-                </div>
-
-                {{-- Checklists (main) --}}
-                @if ($editingCard)
-                    <div class="[grid-area:checklists]">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Checklists</label>
-                        <livewire:boards.checklist-manager :card="$editingCard" :key="'checklist-manager-'.$editingCard->id" />
-                    </div>
-
-                    <div class="[grid-area:attachments]">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Attachments</label>
-                        <livewire:boards.attachment-manager :card="$editingCard" :key="'attachment-manager-'.$editingCard->id" />
-                    </div>
-
-                    <div class="[grid-area:comments]">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Comments</label>
-                        <livewire:boards.comment-manager :card="$editingCard" :key="'comment-manager-'.$editingCard->id" />
-                    </div>
-                @endif
+        <div class="flex flex-col gap-2">
+            <h3 class="text-sm font-semibold">Labels</h3>
+            <div class="flex flex-wrap items-center gap-2">
+                @forelse ($labels as $label)
+                    @php $assigned = (bool) $editingCard?->labels->contains($label->id); @endphp
+                    <button type="button" aria-pressed="{{ $assigned ? 'true' : 'false' }}"
+                        wire:click="toggleCardLabel({{ $editingCard?->id }}, {{ $label->id }})"
+                        @class([
+                            'inline-flex h-8 items-center gap-1.5 rounded-md px-3 max-sm:h-10 text-sm font-medium text-ink',
+                            $label->colorClass(),
+                            'ring-2 ring-ink ring-offset-1' => $assigned,
+                            'opacity-60 hover:opacity-100' => ! $assigned,
+                        ])>
+                        @if ($assigned)
+                            <x-icon name="check" class="size-3.5" />
+                        @endif
+                        {{ $label->name }}
+                    </button>
+                @empty
+                    <p class="text-sm text-ink-subtle">No labels yet. Create some from the board's Labels button.</p>
+                @endforelse
             </div>
         </div>
 
-        {{-- Sticky footer --}}
-        <div class="flex justify-end gap-2 px-4 sm:px-6 py-3 border-t border-gray-100 flex-shrink-0">
-            <button type="button" x-on:click="attemptClose()"
-                class="px-4 min-h-[40px] text-sm rounded-md text-gray-700 hover:bg-gray-100">
-                Cancel
-            </button>
-            <button type="submit" form="save-card-form" class="px-4 min-h-[40px] text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700">
-                Save
-            </button>
+        <div class="flex flex-col gap-2">
+            <div class="flex items-center gap-2">
+                <h3 class="text-sm font-semibold">Due date</h3>
+                @if ($dueTone)
+                    <x-card-badge :icon="$dueTone === 'completed' ? 'check' : 'calendar'" :tone="$dueTones[$dueTone]">{{ $editingCard->due_date->format('j M') }}</x-card-badge>
+                @endif
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <label class="sr-only" for="card-due-date">Due date</label>
+                <div class="relative w-64 max-w-full">
+                    <span class="pointer-events-none absolute left-3 top-3 text-ink-muted"><x-icon name="calendar" /></span>
+                    <input id="card-due-date" form="save-card-form" wire:model="cardDueDate" type="datetime-local"
+                        @error('cardDueDate') aria-invalid="true" aria-describedby="card-due-date-msg" @enderror
+                        @class([
+                            'h-10 w-full rounded-lg border bg-surface pl-10 pr-3 text-sm placeholder:text-ink-subtle',
+                            'border-danger ring-2 ring-danger-soft' => $errors->has('cardDueDate'),
+                            'border-border-strong' => ! $errors->has('cardDueDate'),
+                        ])>
+                </div>
+                <x-button variant="ghost" wire:click="clearDueDate">Clear</x-button>
+            </div>
+            @error('cardDueDate')
+                <p id="card-due-date-msg" class="flex items-center gap-1.5 text-sm text-danger-ink"><x-icon name="alert-circle" class="size-4" />{{ $message }}</p>
+            @enderror
         </div>
-    </div>
+
+        <div class="flex flex-col gap-2">
+            <h3 class="text-sm font-semibold">Description</h3>
+            <label class="sr-only" for="card-description">Description</label>
+            <textarea id="card-description" form="save-card-form" wire:model="cardDescription" rows="3"
+                @error('cardDescription') aria-invalid="true" aria-describedby="card-description-msg" @enderror
+                @class([
+                    'w-full rounded-lg border bg-surface px-3 py-2 text-sm placeholder:text-ink-subtle',
+                    'border-danger ring-2 ring-danger-soft' => $errors->has('cardDescription'),
+                    'border-border-strong' => ! $errors->has('cardDescription'),
+                ])></textarea>
+            @error('cardDescription')
+                <p id="card-description-msg" class="flex items-center gap-1.5 text-sm text-danger-ink"><x-icon name="alert-circle" class="size-4" />{{ $message }}</p>
+            @enderror
+        </div>
+
+        @if ($editingCard)
+            <div class="flex flex-col gap-3">
+                <h3 class="text-sm font-semibold">Checklists</h3>
+                <livewire:boards.checklist-manager :card="$editingCard" :key="'checklist-manager-'.$editingCard->id" />
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <h3 class="text-sm font-semibold">Attachments</h3>
+                <livewire:boards.attachment-manager :card="$editingCard" :key="'attachment-manager-'.$editingCard->id" />
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <h3 class="text-sm font-semibold">Comments</h3>
+                <livewire:boards.comment-manager :card="$editingCard" :key="'comment-manager-'.$editingCard->id" />
+            </div>
+        @endif
+
+        @if ($confirmingDeleteCard && $editingCard)
+            <x-confirm-dialog label="Delete card" onClose="$wire.cancelDeleteCard()">
+                <h3 class="mt-3 text-lg font-semibold tracking-tight">Delete &ldquo;{{ $editingCard->title }}&rdquo;?</h3>
+                <p class="mt-1 text-sm text-ink-muted">The card, its checklist, comments and attachments will be permanently deleted.</p>
+                <div class="mt-5 flex flex-wrap justify-end gap-2">
+                    <x-button variant="secondary" wire:click="cancelDeleteCard">Cancel</x-button>
+                    <x-button variant="danger" wire:click="deleteCard({{ $editingCard->id }})" target="deleteCard" loading-text="Deleting…">
+                        Delete card
+                    </x-button>
+                </div>
+            </x-confirm-dialog>
+        @endif
+
+        <template x-if="discarding">
+            <div>
+            <x-confirm-dialog label="Discard unsaved changes" tone="warn" onClose="discarding = false">
+                <h3 class="mt-3 text-lg font-semibold tracking-tight">Discard unsaved changes?</h3>
+                <p class="mt-1 text-sm text-ink-muted">You have edits that have not been saved. If you leave now they will be lost.</p>
+                <div class="mt-5 flex flex-wrap justify-end gap-2">
+                    <x-button variant="secondary" x-on:click="discarding = false">Keep editing</x-button>
+                    <x-button variant="danger" x-on:click="discarding = false; $wire.closeCardModal()">Discard changes</x-button>
+                </div>
+            </x-confirm-dialog>
+            </div>
+        </template>
+
+        <x-slot:footer>
+            <div class="mr-auto">
+                <button type="button" aria-label="Delete card" wire:click="confirmDeleteCard"
+                    class="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-medium text-danger-ink transition-colors hover:bg-danger-soft max-sm:w-10 max-sm:px-0">
+                    <x-icon name="trash" />
+                    <span class="max-sm:sr-only">Delete card</span>
+                </button>
+            </div>
+            <x-button variant="ghost" x-on:click="attemptClose()">Cancel</x-button>
+            <x-button type="submit" form="save-card-form" target="saveCard" loading-text="Saving…">Save changes</x-button>
+        </x-slot:footer>
+    </x-modal>
 </div>

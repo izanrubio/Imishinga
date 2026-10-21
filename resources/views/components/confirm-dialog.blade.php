@@ -8,6 +8,8 @@
 <div class="fixed inset-0 z-50 bg-scrim" aria-hidden="true"></div>
 <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
     x-data
+    x-restore-focus
+    x-init="$nextTick(() => $el.querySelector('button')?.focus())"
     @if ($onClose) x-on:keydown.escape.window="{{ $onClose }}" @endif>
     <div role="alertdialog" aria-modal="true" aria-label="{{ $label }}"
         @if ($onClose) x-on:click.outside="{{ $onClose }}" @endif

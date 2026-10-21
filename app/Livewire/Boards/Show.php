@@ -25,6 +25,8 @@ class Show extends Component
 
     public bool $showCardModal = false;
 
+    public bool $confirmingDeleteCard = false;
+
     public ?Card $editingCard = null;
 
     public string $cardTitle = '';
@@ -158,6 +160,8 @@ class Show extends Component
             'cardTitle' => ['required', 'string', 'max:255'],
             'cardDescription' => ['nullable', 'string', 'max:5000'],
             'cardDueDate' => ['nullable', 'date'],
+        ], [
+            'cardTitle.required' => 'A card needs a title.',
         ], attributes: ['cardTitle' => 'title', 'cardDescription' => 'description', 'cardDueDate' => 'due date']);
 
         $this->editingCard->update([
@@ -190,8 +194,23 @@ class Show extends Component
         $this->board->unsetRelation('lists');
     }
 
+    public function confirmDeleteCard(): void
+    {
+        $this->authorize('update', $this->board);
+
+        abort_unless($this->editingCard, 404);
+
+        $this->confirmingDeleteCard = true;
+    }
+
+    public function cancelDeleteCard(): void
+    {
+        $this->confirmingDeleteCard = false;
+    }
+
     public function closeCardModal(): void
     {
+        $this->confirmingDeleteCard = false;
         $this->showCardModal = false;
         $this->editingCard = null;
         $this->reset(['cardTitle', 'cardDescription', 'cardDueDate']);

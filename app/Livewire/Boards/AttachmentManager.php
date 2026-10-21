@@ -35,6 +35,8 @@ class AttachmentManager extends Component
     /** @var array<int, TemporaryUploadedFile> */
     public array $newFiles = [];
 
+    public ?int $confirmingDeleteId = null;
+
     public function mount(Card $card): void
     {
         abort_unless($card->list->board->user_id === Auth::id(), 404);
@@ -53,6 +55,18 @@ class AttachmentManager extends Component
                 'mimes:'.implode(',', self::ALLOWED_EXTENSIONS),
                 'mimetypes:'.implode(',', self::ALLOWED_MIME_TYPES),
             ],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function messages(): array
+    {
+        return [
+            'newFiles.*.max' => 'File too large, max 10 MB',
+            'newFiles.*.mimes' => 'File type not allowed',
+            'newFiles.*.mimetypes' => 'File type not allowed',
         ];
     }
 
@@ -81,9 +95,20 @@ class AttachmentManager extends Component
         $this->dispatch('attachments-updated');
     }
 
+    public function confirmDelete(int $attachmentId): void
+    {
+        $this->confirmingDeleteId = $this->ownedAttachment($attachmentId)->id;
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->confirmingDeleteId = null;
+    }
+
     public function deleteAttachment(int $attachmentId): void
     {
         $this->ownedAttachment($attachmentId)->delete();
+        $this->confirmingDeleteId = null;
 
         $this->dispatch('attachments-updated');
     }
@@ -100,7 +125,7 @@ class AttachmentManager extends Component
     public function render()
     {
         return view('livewire.boards.attachment-manager', [
-            'attachments' => $this->card->attachments()->with('user')->latest()->get(),
+            'attachments' => $this->card->attachments()->latest()->get(),
         ]);
     }
 }

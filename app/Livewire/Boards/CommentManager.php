@@ -13,6 +13,8 @@ class CommentManager extends Component
 
     public string $content = '';
 
+    public ?int $confirmingDeleteId = null;
+
     public function mount(Card $card): void
     {
         abort_unless($card->list->board->user_id === Auth::id(), 404);
@@ -24,6 +26,8 @@ class CommentManager extends Component
     {
         $data = $this->validate([
             'content' => ['required', 'string', 'max:2000'],
+        ], [
+            'content.required' => 'Write a comment first.',
         ]);
 
         $this->card->comments()->create([
@@ -35,6 +39,20 @@ class CommentManager extends Component
         $this->dispatch('comments-updated');
     }
 
+    public function confirmDelete(int $commentId): void
+    {
+        $comment = $this->ownedComment($commentId);
+
+        abort_unless($comment->user_id === Auth::id(), 403);
+
+        $this->confirmingDeleteId = $comment->id;
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->confirmingDeleteId = null;
+    }
+
     public function deleteComment(int $commentId): void
     {
         $comment = $this->ownedComment($commentId);
@@ -42,6 +60,7 @@ class CommentManager extends Component
         abort_unless($comment->user_id === Auth::id(), 403);
 
         $comment->delete();
+        $this->confirmingDeleteId = null;
         $this->dispatch('comments-updated');
     }
 
@@ -57,7 +76,7 @@ class CommentManager extends Component
     public function render()
     {
         return view('livewire.boards.comment-manager', [
-            'comments' => $this->card->comments()->with('user')->latest()->get(),
+            'comments' => $this->card->comments()->with('user')->latest()->latest('id')->get(),
         ]);
     }
 }

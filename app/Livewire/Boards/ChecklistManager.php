@@ -17,6 +17,8 @@ class ChecklistManager extends Component
     /** @var array<int, string> */
     public array $newItemContent = [];
 
+    public ?int $confirmingDeleteChecklistId = null;
+
     public function mount(Card $card): void
     {
         abort_unless($card->list->board->user_id === Auth::id(), 404);
@@ -51,9 +53,20 @@ class ChecklistManager extends Component
         $this->dispatch('checklists-updated');
     }
 
+    public function confirmDeleteChecklist(int $checklistId): void
+    {
+        $this->confirmingDeleteChecklistId = $this->ownedChecklist($checklistId)->id;
+    }
+
+    public function cancelDeleteChecklist(): void
+    {
+        $this->confirmingDeleteChecklistId = null;
+    }
+
     public function deleteChecklist(int $checklistId): void
     {
         $this->ownedChecklist($checklistId)->delete();
+        $this->confirmingDeleteChecklistId = null;
         $this->dispatch('checklists-updated');
     }
 

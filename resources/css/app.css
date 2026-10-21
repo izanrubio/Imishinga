@@ -115,3 +115,8 @@
 .lists-row:has(.list-ghost) {
     scroll-snap-type: none;
 }
+
+/* Dialogs lock page scrolling for as long as one is in the DOM. */
+body:has([role='dialog'], [role='alertdialog']) {
+    overflow: hidden;
+}
